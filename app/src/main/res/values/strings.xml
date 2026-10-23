@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Focus Home</string>
+    <string name="guard_label">Focus Home app blocking</string>
+    <string name="guard_description">While Focus mode is on, this closes any app that isn\'t on your essentials list, even if it\'s opened from Recents, a notification or a link. It only checks which app is on screen, never what\'s in it, and nothing leaves your phone. Calls, alarms, the keyboard and Settings are never blocked.</string>
+</resources>
