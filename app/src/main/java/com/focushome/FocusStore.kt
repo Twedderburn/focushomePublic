@@ -25,12 +25,18 @@ data class FocusState(
     val focusOn: Boolean = false,
     /** Package names, in the order they appear on the Focus screen. */
     val essentials: List<String> = emptyList(),
+    /** How the favorites are ordered and grouped into folders on the home screen. Always matches [essentials]. */
+    val homeLayout: List<HomeItem> = emptyList(),
     /** 0 means auto-relock is off. */
     val relockMinutes: Int = 30,
     /** Name of the home screen's accent colour (see ui.AccentChoice). */
     val accent: String = "Clay",
+    /** Name of the background theme (see ui.BackgroundChoice). */
+    val background: String = "Espresso",
     /** Whether the home screen shows the "write to Claude" card. Off until turned on in Settings. */
     val claudeWidget: Boolean = false,
+    /** Whether the first-run tour has been finished or skipped. */
+    val tourDone: Boolean = false,
     /** SystemClock.elapsedRealtime() at the last unlock, so changing the clock can't stretch the unlock window. */
     val unlockedAt: Long = 0,
     /** Boot count at the last unlock. Elapsed time restarts at boot, so a reboot counts as the window running out. */
@@ -90,13 +96,20 @@ object FocusStore {
     fun setKey(raw: String, generated: Boolean) =
         update { it.copy(keyHash = QrKey.hash(raw), keyContent = if (generated) raw else null) }
 
-    fun setEssentials(packages: List<String>) = update { it.copy(essentials = packages) }
+    fun setEssentials(packages: List<String>) =
+        update { it.copy(essentials = packages, homeLayout = HomeLayout.normalize(it.homeLayout, packages)) }
+
+    fun setHomeLayout(items: List<HomeItem>) = update { it.copy(homeLayout = HomeLayout.normalize(items, it.essentials)) }
 
     fun setRelockMinutes(minutes: Int) = update { it.copy(relockMinutes = minutes) }
 
     fun setAccent(name: String) = update { it.copy(accent = name) }
 
+    fun setBackground(name: String) = update { it.copy(background = name) }
+
     fun setClaudeWidget(on: Boolean) = update { it.copy(claudeWidget = on) }
+
+    fun setTourDone(done: Boolean) = update { it.copy(tourDone = done) }
 
     fun setSetupStep(step: Int) = update { it.copy(setupStep = step) }
 
@@ -161,6 +174,8 @@ object FocusStore {
         }
     }
 
+    private fun savedEssentials() = prefs.getString("essentials", "")!!.split(',').filter { it.isNotBlank() }
+
     private fun load() = FocusState(
         setupDone = prefs.getBoolean("setupDone", false),
         setupStep = prefs.getInt("setupStep", 0),
@@ -169,10 +184,15 @@ object FocusStore {
         keyContent = prefs.getString("keyContent", null)
             ?: prefs.getString("keyToken", null)?.let { "focushome://key/$it" },
         focusOn = prefs.getBoolean("focusOn", false),
-        essentials = prefs.getString("essentials", "")!!.split(',').filter { it.isNotBlank() },
+        essentials = savedEssentials(),
+        // No saved layout (first run, or updating from before folders) means the favorites in their own order.
+        homeLayout = HomeLayout.normalize(HomeLayout.decode(prefs.getString("homeLayout", null) ?: ""), savedEssentials()),
         relockMinutes = prefs.getInt("relockMinutes", 30),
         accent = prefs.getString("accent", null) ?: "Clay",
+        background = prefs.getString("background", null) ?: "Espresso",
         claudeWidget = prefs.getBoolean("claudeWidget", false),
+        // People upgrading with setup already done have used the app, so they skip the first-run tour.
+        tourDone = prefs.getBoolean("tourDone", prefs.getBoolean("setupDone", false)),
         // 1.0 stored a wall-clock unlock time; treat an unlock carried over from it as already expired.
         unlockedAt = if (prefs.contains("unlockedAtElapsed")) prefs.getLong("unlockedAtElapsed", 0)
         else if (prefs.getLong("unlockedAt", 0) > 0) 1 else 0,
@@ -195,9 +215,12 @@ object FocusStore {
             .putString("keyContent", s.keyContent)
             .putBoolean("focusOn", s.focusOn)
             .putString("essentials", s.essentials.joinToString(","))
+            .putString("homeLayout", HomeLayout.encode(s.homeLayout))
             .putInt("relockMinutes", s.relockMinutes)
             .putString("accent", s.accent)
+            .putString("background", s.background)
             .putBoolean("claudeWidget", s.claudeWidget)
+            .putBoolean("tourDone", s.tourDone)
             .putLong("unlockedAtElapsed", s.unlockedAt)
             .putInt("unlockBoot", s.unlockBoot)
             .putLong("focusStartedAt", s.focusStartedAt)

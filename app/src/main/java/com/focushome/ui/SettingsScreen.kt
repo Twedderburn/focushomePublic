@@ -95,9 +95,15 @@ fun SettingsScreen(
                 }
             }
 
-            Section("Accent colour") {
-                Body("Used for the clock, buttons and highlights. Everything else stays neutral.")
-                Spacer(Modifier.height(14.dp))
+            Section("Colours") {
+                Body("A background theme for every screen, and one accent colour for the clock, buttons and highlights.")
+                Spacer(Modifier.height(16.dp))
+                Text("Background", color = Dim, fontSize = 14.sp)
+                Spacer(Modifier.height(10.dp))
+                BackgroundPicker(selected = BackgroundChoice.of(state.background), onPick = { FocusStore.setBackground(it.name) })
+                Spacer(Modifier.height(18.dp))
+                Text("Accent", color = Dim, fontSize = 14.sp)
+                Spacer(Modifier.height(10.dp))
                 AccentPicker(selected = AccentChoice.of(state.accent), onPick = { FocusStore.setAccent(it.name) })
             }
 
@@ -152,6 +158,15 @@ fun SettingsScreen(
                 }
             }
 
+            Section("Tour") {
+                Body("A quick walkthrough of the home screen, Focus mode and everything else.")
+                Spacer(Modifier.height(12.dp))
+                Action("Take the tour") {
+                    FocusStore.setTourDone(false)
+                    onBack()
+                }
+            }
+
             Section("What this can't stop") {
                 Body(
                     if (guardOn) {
@@ -178,6 +193,53 @@ private fun Section(title: String, content: @Composable () -> Unit) {
     Text(title, color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Medium)
     Spacer(Modifier.height(6.dp))
     content()
+}
+
+/**
+ * A row of rounded-square swatches, each a tiny preview of its theme: the background with a card
+ * strip and an accent dot. The picked one gets a ring and its name shows underneath.
+ */
+@Composable
+private fun BackgroundPicker(selected: BackgroundChoice, onPick: (BackgroundChoice) -> Unit) {
+    val outer = RoundedCornerShape(16.dp)
+    val inner = RoundedCornerShape(12.dp)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        BackgroundChoice.entries.forEach { choice ->
+            val isSelected = choice == selected
+            Box(
+                Modifier
+                    .size(56.dp)
+                    .clip(outer)
+                    .then(if (isSelected) Modifier.border(2.dp, Ink, outer) else Modifier)
+                    .clickable { onPick(choice) }
+                    .padding(if (isSelected) 5.dp else 2.dp)
+                    .clip(inner)
+                    .background(choice.bg)
+                    // A light edge so Black still reads as a swatch on a black page.
+                    .border(1.dp, choice.ink.copy(alpha = 0.18f), inner),
+            ) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 6.dp, vertical = 7.dp)
+                        .fillMaxWidth()
+                        .height(9.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(choice.card),
+                )
+                Box(
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(Accent),
+                )
+            }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    Body(selected.label, color = Ink)
 }
 
 /** A row of colour swatches; the picked one gets a ring and its name shows underneath. */

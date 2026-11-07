@@ -18,6 +18,10 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import android.graphics.drawable.ColorDrawable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,15 +33,44 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// Warm, low-contrast neutrals: calm to look at, never loud. One accent colour, picked in Settings.
-/** The page background: a warm near-black. */
-val Bg = Color(0xFF0F0D0B)
-val Ink = Color(0xFFF1EBE4)
-val Dim = Color(0xFFA89E93)
-val Faint = Color(0xFF6E645A)
-val Line = Color(0xFF2B2520)
+// Low-contrast neutrals: calm to look at, never loud. The background theme and one accent colour are
+// picked in Settings.
+
+/**
+ * A background theme: the page colour plus the raised surface, divider and three text tones tuned to
+ * sit on it. Gray themes get neutral text; brown themes get warm text.
+ */
+enum class BackgroundChoice(
+    val label: String,
+    val bg: Color,
+    val card: Color,
+    val line: Color,
+    val ink: Color,
+    val dim: Color,
+    val faint: Color,
+) {
+    Black("Black", Color(0xFF000000), Color(0xFF121212), Color(0xFF2A2A2A), Color(0xFFEDEDED), Color(0xFF9E9E9E), Color(0xFF636363)),
+    Graphite("Graphite", Color(0xFF1C1D1F), Color(0xFF292A2D), Color(0xFF3A3B3F), Color(0xFFEEEEEF), Color(0xFFA5A6AA), Color(0xFF717378)),
+    Espresso("Espresso", Color(0xFF0F0D0B), Color(0xFF1A1613), Color(0xFF2B2520), Color(0xFFF1EBE4), Color(0xFFA89E93), Color(0xFF6E645A)),
+    Walnut("Walnut", Color(0xFF1E1712), Color(0xFF2A211A), Color(0xFF3C3027), Color(0xFFF3ECE4), Color(0xFFB3A595), Color(0xFF7E6F61)),
+    Mocha("Mocha", Color(0xFF2C221B), Color(0xFF392D24), Color(0xFF4D3E32), Color(0xFFF6EFE7), Color(0xFFBFAF9F), Color(0xFF8C7B6B)),
+    ;
+
+    companion object {
+        fun of(name: String) = entries.firstOrNull { it.name == name } ?: Espresso
+    }
+}
+
+val LocalBackground = staticCompositionLocalOf { BackgroundChoice.Espresso }
+
+/** The page background. */
+val Bg: Color @Composable @ReadOnlyComposable get() = LocalBackground.current.bg
 /** Raised surfaces (cards, the search field) sit just above the background. */
-val Card = Color(0xFF1A1613)
+val Card: Color @Composable @ReadOnlyComposable get() = LocalBackground.current.card
+val Line: Color @Composable @ReadOnlyComposable get() = LocalBackground.current.line
+val Ink: Color @Composable @ReadOnlyComposable get() = LocalBackground.current.ink
+val Dim: Color @Composable @ReadOnlyComposable get() = LocalBackground.current.dim
+val Faint: Color @Composable @ReadOnlyComposable get() = LocalBackground.current.faint
 
 /** The accent colours on offer. Muted so they sit comfortably on the brown neutrals. */
 enum class AccentChoice(val label: String, val color: Color) {
@@ -65,22 +98,26 @@ val Accent: Color
 fun FocusTheme(content: @Composable () -> Unit) {
     val state by FocusStore.state.collectAsStateWithLifecycle()
     val accent = AccentChoice.of(state.accent).color
-    CompositionLocalProvider(LocalAccent provides accent) {
+    val background = BackgroundChoice.of(state.background)
+    // Match the window behind Compose too, so switching apps or rotating never flashes the old colour.
+    val activity = LocalContext.current.findActivity()
+    SideEffect { activity?.window?.setBackgroundDrawable(ColorDrawable(background.bg.toArgb())) }
+    CompositionLocalProvider(LocalAccent provides accent, LocalBackground provides background) {
         MaterialTheme(
             colorScheme = darkColorScheme(
-                background = Bg,
-                surface = Bg,
-                onBackground = Ink,
-                onSurface = Ink,
+                background = background.bg,
+                surface = background.bg,
+                onBackground = background.ink,
+                onSurface = background.ink,
                 primary = accent,
-                onPrimary = Bg,
+                onPrimary = background.bg,
             ),
             content = content,
         )
     }
 }
 
-/** Full-bleed black page with the standard side margins. */
+/** Full-bleed page in the background colour, with the standard side margins. */
 @Composable
 fun Page(content: @Composable ColumnScope.() -> Unit) {
     Column(

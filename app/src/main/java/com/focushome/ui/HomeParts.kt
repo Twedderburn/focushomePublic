@@ -2,6 +2,9 @@ package com.focushome.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -305,7 +308,7 @@ fun AllAppsDrawer(apps: List<AppEntry>, favorites: Set<String>, onOpen: (AppEntr
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text("All apps", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Light, modifier = Modifier.weight(1f))
-            Quiet("Close", onClick = onClose)
+            Quiet("Close", Modifier.tourTarget("close"), onClick = onClose)
         }
 
         BasicTextField(
@@ -329,7 +332,7 @@ fun AllAppsDrawer(apps: List<AppEntry>, favorites: Set<String>, onOpen: (AppEntr
                     field()
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().tourTarget("search"),
         )
         Spacer(Modifier.height(10.dp))
 
@@ -375,6 +378,13 @@ fun HomeClock(now: Long, status: String, modifier: Modifier = Modifier) {
     val minutes = SimpleDateFormat("mm", Locale.getDefault()).format(date)
     val amPm = if (is24h) null else SimpleDateFormat("a", Locale.getDefault()).format(date).lowercase()
     val accent = Accent
+    // Tapping the time opens the clock app. A ripple looks odd on huge text, so it dims a little instead.
+    val press = remember { MutableInteractionSource() }
+    val pressed by press.collectIsPressedAsState()
+
+    // Tapping the date opens the calendar app, with the same dimming.
+    val datePress = remember { MutableInteractionSource() }
+    val datePressed by datePress.collectIsPressedAsState()
 
     Column(modifier) {
         Text(
@@ -383,8 +393,18 @@ fun HomeClock(now: Long, status: String, modifier: Modifier = Modifier) {
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             letterSpacing = 2.sp,
+            modifier = Modifier
+                .graphicsLayer { alpha = if (datePressed) 0.6f else 1f }
+                .clickable(interactionSource = datePress, indication = null, onClickLabel = "Open calendar") { Apps.openCalendar(context) }
+                // A taller touch target than the small text alone.
+                .padding(vertical = 10.dp),
         )
-        Row(verticalAlignment = Alignment.Bottom) {
+        Row(
+            Modifier
+                .graphicsLayer { alpha = if (pressed) 0.6f else 1f }
+                .clickable(interactionSource = press, indication = null, onClickLabel = "Open clock") { Apps.openClock(context) },
+            verticalAlignment = Alignment.Bottom,
+        ) {
             Text(
                 buildAnnotatedString {
                     append(hours)

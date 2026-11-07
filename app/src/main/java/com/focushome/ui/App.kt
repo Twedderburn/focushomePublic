@@ -11,7 +11,11 @@ import android.provider.Settings
 import android.text.format.DateFormat
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +55,7 @@ fun FocusHomeApp(
     val state by FocusStore.state.collectAsStateWithLifecycle()
     var screen by rememberSaveable { mutableStateOf(Screen.Home) }
     var message by remember { mutableStateOf<String?>(null) }
+    val tour = remember { TourController().apply { onFinish = { FocusStore.setTourDone(true) } } }
 
     LaunchedEffect(homePresses) { screen = Screen.Home }
     // 1.0 saved key images to Photos, where Gallery's QR detection could open them. Clear them out once
@@ -110,20 +115,29 @@ fun FocusHomeApp(
         }
     }
 
+    // The first-run tour (or a replay from Settings) starts once the home screen is reachable.
+    LaunchedEffect(state.tourDone) {
+        if (!state.tourDone && !tour.active) tour.start(buildTourSteps(FocusStore.state.value))
+    }
+
     when (shown) {
-        Screen.Home ->
-            if (state.focusOn) {
-                FocusScreen(state, apps, now, message, resumes, onScan = scanToUnlock, onEmergency = { screen = Screen.Emergency })
-            } else {
-                OpenScreen(
-                    state, apps, now, message, resumes, homePresses,
-                    onLock = {
-                        FocusStore.enterFocus()
-                        message = "Focus mode on"
-                    },
-                    onSettings = { screen = Screen.Settings },
-                )
+        Screen.Home -> CompositionLocalProvider(LocalTour provides tour) {
+            Box(Modifier.fillMaxSize()) {
+                if (state.focusOn) {
+                    FocusScreen(state, apps, now, message, resumes, onScan = scanToUnlock, onEmergency = { screen = Screen.Emergency })
+                } else {
+                    OpenScreen(
+                        state, apps, now, message, resumes, homePresses,
+                        onLock = {
+                            FocusStore.enterFocus()
+                            message = "Focus mode on"
+                        },
+                        onSettings = { screen = Screen.Settings },
+                    )
+                }
+                if (tour.active) TourOverlay(tour)
             }
+        }
         Screen.Settings -> SettingsScreen(
             state = state,
             apps = apps,

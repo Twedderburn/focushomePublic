@@ -10,6 +10,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.net.Uri
+import android.provider.AlarmClock
+import android.provider.CalendarContract
 import android.provider.MediaStore
 import android.provider.Telephony
 import android.telecom.TelecomManager
@@ -139,6 +141,41 @@ object Apps {
     }
 
     const val CLAUDE = "com.anthropic.claude"
+
+    /** Opens the phone's clock app (its alarms screen), falling back to launching a known clock app. */
+    fun openClock(context: Context): Boolean {
+        val show = Intent(AlarmClock.ACTION_SHOW_ALARMS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(show)
+            return true
+        } catch (_: Exception) {
+        }
+        val launch = CLOCKS.firstNotNullOfOrNull { context.packageManager.getLaunchIntentForPackage(it) } ?: return false
+        return try {
+            context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /** Opens the phone's calendar app, on today. */
+    fun openCalendar(context: Context): Boolean {
+        val attempts = listOf(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR),
+            Intent(Intent.ACTION_VIEW, CalendarContract.CONTENT_URI.buildUpon().appendPath("time").appendPath(System.currentTimeMillis().toString()).build()),
+        )
+        for (intent in attempts) {
+            try {
+                context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return true
+            } catch (_: Exception) {
+            }
+        }
+        return false
+    }
+
+    private val CLOCKS = listOf("com.sec.android.app.clockpackage", "com.google.android.deskclock", "com.android.deskclock")
 
     /** Phone, Messages, Camera, Gallery, Clock, Calendar and Claude, matched to whatever is installed. */
     fun defaultEssentials(context: Context, installed: List<AppEntry>): List<String> {

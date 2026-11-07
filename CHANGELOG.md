@@ -2,9 +2,21 @@
 
 ## 1.6 (2026-11-07)
 
+### Added
+- **Arrange your favorites, and group them into folders.**
+  - Hold an icon to pick it up, then drag. Rest over a spot and the other icons slide aside to make room.
+  - Hover over the middle of another app until it lights up, then let go to make a folder. Drop an app on a folder to add it.
+  - Tap a folder to open it: just its name and its apps. Tap the name to rename it, hold an app to reorder it, or drag an app out past the edge to take it out. A folder with one app left turns back into that app. The tour explains all of this.
+  - The layout is saved. New favorites go at the end, and apps you remove from your favorites leave their folders. Arranging doesn't change which apps are allowed in Focus mode.
+- **A first-run tour.** Right after setup, a step-by-step walkthrough spotlights each part of the real home screen and explains it. It covers the clock and status, favorites, the app drawer, Lock, Settings, Focus mode and the QR key, the emergency unlock, "Not now" blocking, the web filter and the Claude box.
+  - It's interactive: on some steps you try the control yourself (open the drawer, then close it) and the tour moves on when you do.
+  - It's written for whichever mode you're in. In Focus mode it points at Scan to unlock and Lost your key? instead.
+  - Skip it at any time, and replay it from Settings › Tour. People updating from an earlier version aren't shown it automatically.
+
 ### Changed
-- **A redesigned home screen** in warm neutral browns instead of pure black and gray. One **accent colour** (Clay, Ochre, Sage, Teal, Slate, Rose or Plum) is picked in Settings › Accent colour and used for the clock, buttons and highlights.
+- **A redesigned home screen** with themes. In Settings › Colours, pick a **background** (Black, Graphite, Espresso, Walnut or Mocha; Espresso, a warm near-black, is the default) and one **accent colour** (Clay, Ochre, Sage, Teal, Slate, Rose or Plum) for the clock, buttons and highlights. Each background comes with matching card, divider and text tones.
   - A new clock: the day and date in small accent capitals, then a large light time with an accent colon and am/pm. Your status sits below it in a small pill.
+  - Tap the time to open your clock app, which works in Focus mode too because alarms are always allowed. Tap the date to open your calendar; in Focus mode that needs Calendar to be one of your favorites.
   - Then a **Claude** card, then your **Favorites**.
   - Favorites (the essentials list, renamed) show as a four-across grid of full-colour, rounded-square icons with labels. The All apps drawer uses the same icons.
   - Lock and Settings are now round icon buttons: a padlock in the accent colour and a neutral gear.
