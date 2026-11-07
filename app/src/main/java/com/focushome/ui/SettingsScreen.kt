@@ -167,19 +167,6 @@ fun SettingsScreen(
                 }
             }
 
-            Section("What this can't stop") {
-                Body(
-                    if (guardOn) {
-                        "Android Settings is left alone, so it can still switch off app blocking or pick another home app. " +
-                            "Disconnecting the web filter there only blocks your browsers until you turn it back on. " +
-                            "Focus Home adds friction; it isn't a lock."
-                    } else {
-                        "Without app blocking, apps already open in Recents and links in notifications get around Focus mode, " +
-                            "and Android Settings can pick another home app. Focus Home adds friction; it isn't a lock."
-                    },
-                    color = Faint,
-                )
-            }
             Spacer(Modifier.height(24.dp))
         }
     }

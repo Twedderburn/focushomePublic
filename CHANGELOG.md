@@ -23,6 +23,9 @@
   - The Claude card is off by default; turn it on in Settings › Claude on the home screen. It lets you type a message and hand it straight to the Claude app with the send button or the keyboard's Send key. If Claude can't take shared text, the message is copied and Claude opens so you can paste it. In Focus mode the card only works if Claude is one of your favorites.
 - **All apps live in a swipe-up drawer** that also opens from the **All apps** handle at the bottom. It's searchable and stars your favorites. It only opens while unlocked; in Focus mode the handle reads "Locked" and a swipe just reminds you to scan your key.
 
+### Removed
+- The "What this can't stop" section in Settings. The app no longer spells out ways around itself.
+
 ## 1.5 (2026-11-07)
 
 ### Added
