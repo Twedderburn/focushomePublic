@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6 (2026-11-07)
+
+### Changed
+- **A redesigned home screen** in warm neutral browns instead of pure black and gray. One **accent colour** (Clay, Ochre, Sage, Teal, Slate, Rose or Plum) is picked in Settings › Accent colour and used for the clock, buttons and highlights.
+  - A new clock: the day and date in small accent capitals, then a large light time with an accent colon and am/pm. Your status sits below it in a small pill.
+  - Then a **Claude** card, then your **Favorites**.
+  - Favorites (the essentials list, renamed) show as a four-across grid of full-colour, rounded-square icons with labels. The All apps drawer uses the same icons.
+  - Lock and Settings are now round icon buttons: a padlock in the accent colour and a neutral gear.
+  - The Claude card is off by default; turn it on in Settings › Claude on the home screen. It lets you type a message and hand it straight to the Claude app with the send button or the keyboard's Send key. If Claude can't take shared text, the message is copied and Claude opens so you can paste it. In Focus mode the card only works if Claude is one of your favorites.
+- **All apps live in a swipe-up drawer** that also opens from the **All apps** handle at the bottom. It's searchable and stars your favorites. It only opens while unlocked; in Focus mode the handle reads "Locked" and a swipe just reminds you to scan your key.
+
 ## 1.5 (2026-11-07)
 
 ### Added

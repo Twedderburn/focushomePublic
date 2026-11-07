@@ -113,10 +113,10 @@ fun FocusHomeApp(
     when (shown) {
         Screen.Home ->
             if (state.focusOn) {
-                FocusScreen(state, apps, now, message, onScan = scanToUnlock, onEmergency = { screen = Screen.Emergency })
+                FocusScreen(state, apps, now, message, resumes, onScan = scanToUnlock, onEmergency = { screen = Screen.Emergency })
             } else {
                 OpenScreen(
-                    state, apps, now, message, resumes,
+                    state, apps, now, message, resumes, homePresses,
                     onLock = {
                         FocusStore.enterFocus()
                         message = "Focus mode on"

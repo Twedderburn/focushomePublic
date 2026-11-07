@@ -86,7 +86,7 @@ private fun Welcome(onNext: () -> Unit) {
         Body("A home screen with only the apps you need.", color = Ink)
         Spacer(Modifier.height(28.dp))
         listOf(
-            "Focus mode shows the time and your essential apps. Nothing else.",
+            "Focus mode shows the time and your favorite apps. Nothing else.",
             "Scan your QR key to unlock everything. Tap Lock to go back to Focus.",
             "After you unlock, Focus mode turns itself back on after 30 minutes.",
             "Lost your key? An emergency unlock starts at 15 minutes and gets longer each time you use it in a day.",
@@ -219,7 +219,7 @@ fun EssentialsPicker(
     val installed = remember(apps) { apps.map { it.packageName }.toSet() }
     Page {
         Spacer(Modifier.height(40.dp))
-        Heading("Essential apps")
+        Heading("Favorites")
         Spacer(Modifier.height(8.dp))
         Body("These are the only apps on your Focus screen. Choose the ones you really need.")
         Spacer(Modifier.height(16.dp))

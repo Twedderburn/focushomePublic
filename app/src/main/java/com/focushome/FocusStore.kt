@@ -27,6 +27,10 @@ data class FocusState(
     val essentials: List<String> = emptyList(),
     /** 0 means auto-relock is off. */
     val relockMinutes: Int = 30,
+    /** Name of the home screen's accent colour (see ui.AccentChoice). */
+    val accent: String = "Clay",
+    /** Whether the home screen shows the "write to Claude" card. Off until turned on in Settings. */
+    val claudeWidget: Boolean = false,
     /** SystemClock.elapsedRealtime() at the last unlock, so changing the clock can't stretch the unlock window. */
     val unlockedAt: Long = 0,
     /** Boot count at the last unlock. Elapsed time restarts at boot, so a reboot counts as the window running out. */
@@ -89,6 +93,10 @@ object FocusStore {
     fun setEssentials(packages: List<String>) = update { it.copy(essentials = packages) }
 
     fun setRelockMinutes(minutes: Int) = update { it.copy(relockMinutes = minutes) }
+
+    fun setAccent(name: String) = update { it.copy(accent = name) }
+
+    fun setClaudeWidget(on: Boolean) = update { it.copy(claudeWidget = on) }
 
     fun setSetupStep(step: Int) = update { it.copy(setupStep = step) }
 
@@ -163,6 +171,8 @@ object FocusStore {
         focusOn = prefs.getBoolean("focusOn", false),
         essentials = prefs.getString("essentials", "")!!.split(',').filter { it.isNotBlank() },
         relockMinutes = prefs.getInt("relockMinutes", 30),
+        accent = prefs.getString("accent", null) ?: "Clay",
+        claudeWidget = prefs.getBoolean("claudeWidget", false),
         // 1.0 stored a wall-clock unlock time; treat an unlock carried over from it as already expired.
         unlockedAt = if (prefs.contains("unlockedAtElapsed")) prefs.getLong("unlockedAtElapsed", 0)
         else if (prefs.getLong("unlockedAt", 0) > 0) 1 else 0,
@@ -186,6 +196,8 @@ object FocusStore {
             .putBoolean("focusOn", s.focusOn)
             .putString("essentials", s.essentials.joinToString(","))
             .putInt("relockMinutes", s.relockMinutes)
+            .putString("accent", s.accent)
+            .putBoolean("claudeWidget", s.claudeWidget)
             .putLong("unlockedAtElapsed", s.unlockedAt)
             .putInt("unlockBoot", s.unlockBoot)
             .putLong("focusStartedAt", s.focusStartedAt)

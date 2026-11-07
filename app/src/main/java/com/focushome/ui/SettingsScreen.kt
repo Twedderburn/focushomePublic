@@ -9,6 +9,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -76,10 +80,25 @@ fun SettingsScreen(
                 .weight(1f)
                 .verticalScroll(rememberScrollState()),
         ) {
-            Section("Essential apps") {
-                Body("${state.essentials.count { it in installed }} apps on your Focus screen.")
+            Section("Favorites") {
+                Body("${state.essentials.count { it in installed }} favorites, the only apps open in Focus mode.")
                 Spacer(Modifier.height(12.dp))
                 Action("Choose apps", onClick = onEssentials)
+            }
+
+            Section("Claude on the home screen") {
+                Body("A box at the top of the home screen where you can write a message and send it to the Claude app.")
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Chip("Off", selected = !state.claudeWidget, modifier = Modifier.weight(1f)) { FocusStore.setClaudeWidget(false) }
+                    Chip("On", selected = state.claudeWidget, modifier = Modifier.weight(1f)) { FocusStore.setClaudeWidget(true) }
+                }
+            }
+
+            Section("Accent colour") {
+                Body("Used for the clock, buttons and highlights. Everything else stays neutral.")
+                Spacer(Modifier.height(14.dp))
+                AccentPicker(selected = AccentChoice.of(state.accent), onPick = { FocusStore.setAccent(it.name) })
             }
 
             Section("Auto-relock") {
@@ -161,16 +180,38 @@ private fun Section(title: String, content: @Composable () -> Unit) {
     content()
 }
 
+/** A row of colour swatches; the picked one gets a ring and its name shows underneath. */
+@Composable
+private fun AccentPicker(selected: AccentChoice, onPick: (AccentChoice) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        AccentChoice.entries.forEach { choice ->
+            val isSelected = choice == selected
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .then(if (isSelected) Modifier.border(2.dp, Ink, CircleShape) else Modifier)
+                    .clickable { onPick(choice) }
+                    .padding(if (isSelected) 5.dp else 2.dp)
+                    .clip(CircleShape)
+                    .background(choice.color),
+            )
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    Body(selected.label, color = Ink)
+}
+
 @Composable
 private fun Chip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(20.dp)
     Text(
         label,
         modifier
-            .then(if (selected) Modifier.background(Ink, shape) else Modifier.border(1.dp, Faint, shape))
+            .then(if (selected) Modifier.background(Accent, shape) else Modifier.border(1.dp, Faint, shape))
             .clickable(onClick = onClick)
             .padding(vertical = 10.dp),
-        color = if (selected) Color.Black else Ink,
+        color = if (selected) Bg else Ink,
         fontSize = 15.sp,
         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
     )

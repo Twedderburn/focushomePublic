@@ -1,13 +1,23 @@
 package com.focushome
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.net.Uri
 import android.provider.MediaStore
 import android.provider.Telephony
 import android.telecom.TelecomManager
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
+
+enum class ClaudeHandoff { Shared, CopiedAndOpened, NotInstalled }
 
 data class AppEntry(val label: String, val packageName: String, val component: ComponentName)
 
@@ -70,6 +80,66 @@ object Apps {
         false
     }
 
+    /**
+     * The app's icon as a full square bitmap, or null if it can't be loaded. Call off the main thread.
+     * Adaptive icons are drawn without the system mask (the UI clips them to a rounded square);
+     * older icons are centred on a light tile so they fill the same shape.
+     */
+    fun icon(context: Context, packageName: String, sizePx: Int): ImageBitmap? = try {
+        val drawable = context.packageManager.getApplicationIcon(packageName)
+        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        if (drawable is AdaptiveIconDrawable) {
+            // Layers are 108dp with the middle 72dp visible, so draw them 1.5x and centred.
+            val inset = sizePx / 4
+            listOfNotNull(drawable.background, drawable.foreground).forEach {
+                it.setBounds(-inset, -inset, sizePx + inset, sizePx + inset)
+                it.draw(canvas)
+            }
+        } else {
+            canvas.drawColor(LEGACY_TILE)
+            val pad = sizePx / 8
+            canvas.drawBitmap(drawable.toBitmap(sizePx - 2 * pad, sizePx - 2 * pad), pad.toFloat(), pad.toFloat(), null)
+        }
+        bitmap.asImageBitmap()
+    } catch (e: Exception) {
+        null
+    }
+
+    private const val LEGACY_TILE = 0xFFEDE6DE.toInt()
+
+    /**
+     * Hands [text] to the Claude app as a new message. Uses Claude's share target when it has one;
+     * otherwise copies the text and opens Claude so it can be pasted.
+     */
+    fun sendToClaude(context: Context, text: String): ClaudeHandoff {
+        val pm = context.packageManager
+        val share = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .setPackage(CLAUDE)
+            .putExtra(Intent.EXTRA_TEXT, text)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        @Suppress("DEPRECATION")
+        if (pm.queryIntentActivities(share, 0).isNotEmpty()) {
+            try {
+                context.startActivity(share)
+                return ClaudeHandoff.Shared
+            } catch (_: Exception) {
+            }
+        }
+        val launch = pm.getLaunchIntentForPackage(CLAUDE) ?: return ClaudeHandoff.NotInstalled
+        context.getSystemService(ClipboardManager::class.java)
+            ?.setPrimaryClip(ClipData.newPlainText("Message for Claude", text))
+        return try {
+            context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            ClaudeHandoff.CopiedAndOpened
+        } catch (_: Exception) {
+            ClaudeHandoff.NotInstalled
+        }
+    }
+
+    const val CLAUDE = "com.anthropic.claude"
+
     /** Phone, Messages, Camera, Gallery, Clock, Calendar and Claude, matched to whatever is installed. */
     fun defaultEssentials(context: Context, installed: List<AppEntry>): List<String> {
         val have = installed.map { it.packageName }.toSet()
@@ -84,7 +154,7 @@ object Apps {
             listOf("com.sec.android.gallery3d", "com.google.android.apps.photos"),
             listOf("com.sec.android.app.clockpackage", "com.google.android.deskclock", "com.android.deskclock"),
             listOf("com.samsung.android.calendar", "com.google.android.calendar", "com.android.calendar"),
-            listOf("com.anthropic.claude"),
+            listOf(CLAUDE),
         )
         return groups.mapNotNull { group -> group.firstOrNull { it != null && it in have } }.distinct()
     }
