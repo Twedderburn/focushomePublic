@@ -16,6 +16,7 @@ import android.view.inputmethod.InputMethodManager
 /**
  * Enforces Focus mode beyond the home screen: when an app that isn't essential comes to the front
  * (from Recents, a notification, a link or a widget), it's sent away and the "Not now" screen shows.
+ * Apps in [Apps.ALWAYS_BLOCKED] are sent away in every mode.
  * Only the package and activity name of each new window are read, never its contents.
  */
 class FocusGuardService : AccessibilityService() {
@@ -30,10 +31,16 @@ class FocusGuardService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        val state = FocusStore.state.value
-        if (!state.setupDone || !state.focusOn) return
         val pkg = event.packageName?.toString() ?: return
         val cls = event.className?.toString() ?: return
+        // Reddit and X are blocked in every mode, even unlocked and even if marked essential.
+        if (Apps.isAlwaysBlocked(pkg)) {
+            if (isActivity(pkg, cls)) maybeBlock(pkg, always = true)
+            return
+        }
+
+        val state = FocusStore.state.value
+        if (!state.setupDone || !state.focusOn) return
         if (pkg == packageName || pkg in state.essentials) return
 
         if (SystemClock.elapsedRealtime() - refreshedAt > 60_000) refresh()
@@ -44,16 +51,20 @@ class FocusGuardService : AccessibilityService() {
         // Overlays, dialogs and bubbles from background apps also fire this event; only real activities count.
         if (!isActivity(pkg, cls)) return
 
+        maybeBlock(pkg, always = false)
+    }
+
+    private fun maybeBlock(pkg: String, always: Boolean) {
         val now = SystemClock.elapsedRealtime()
         if (pkg == lastBlocked && now - lastBlockedAt < 1_500) return
         lastBlocked = pkg
         lastBlockedAt = now
-        block(pkg)
+        block(pkg, always)
     }
 
     override fun onInterrupt() = Unit
 
-    private fun block(pkg: String) {
+    private fun block(pkg: String, always: Boolean) {
         val label = try {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
         } catch (_: PackageManager.NameNotFoundException) {
@@ -63,7 +74,8 @@ class FocusGuardService : AccessibilityService() {
         startActivity(
             Intent(this, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .putExtra(MainActivity.EXTRA_BLOCKED, label),
+                .putExtra(MainActivity.EXTRA_BLOCKED, label)
+                .putExtra(MainActivity.EXTRA_BLOCKED_ALWAYS, always),
         )
     }
 

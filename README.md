@@ -23,6 +23,7 @@ A minimal Android home-screen launcher that cuts screen time. Built for a Galaxy
   - Always allowed: Android Settings, calls (dialer and in-call screen), alarms (Clock), Contacts, emergency, keyboards, and anything without a launcher icon (pickers, the share sheet, permission prompts, Play services).
   - In-app browser tabs (Custom Tabs) opened from an essential app are allowed.
   - Overlays and bubbles from background apps are ignored, because only real activities count.
+  - **Always blocked:** Reddit (`com.reddit.frontpage`) and X (`com.twitter.android`, `com.twitter.android.lite`) are sent home in every mode, unlocked included, and whatever the essentials list says. They're also hidden from every app list in Focus Home. The list is `Apps.ALWAYS_BLOCKED` and has no setting. The websites in a browser aren't affected.
 - **Settings and the essential-apps picker** can only be reached while unlocked. If a relock happens mid-edit, you land back on the Focus screen.
 - **Default essentials** are matched to whatever is installed: Phone, Messages, Camera, Gallery, Clock, Calendar and Claude.
 

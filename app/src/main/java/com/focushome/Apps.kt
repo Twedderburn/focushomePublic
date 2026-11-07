@@ -10,12 +10,24 @@ import android.telecom.TelecomManager
 data class AppEntry(val label: String, val packageName: String, val component: ComponentName)
 
 object Apps {
+    /**
+     * Apps that are blocked all the time, in Focus mode and unlocked, whatever the essentials list says.
+     * They're hidden from every app list, so they can't be picked as essential or launched from here.
+     */
+    val ALWAYS_BLOCKED = setOf(
+        "com.reddit.frontpage", // Reddit
+        "com.twitter.android", // X
+        "com.twitter.android.lite", // X Lite
+    )
+
+    fun isAlwaysBlocked(pkg: String) = pkg in ALWAYS_BLOCKED
+
     fun load(context: Context): List<AppEntry> {
         val pm = context.packageManager
         val launchable = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         @Suppress("DEPRECATION")
         return pm.queryIntentActivities(launchable, 0)
-            .filter { it.activityInfo.packageName != context.packageName }
+            .filter { it.activityInfo.packageName != context.packageName && !isAlwaysBlocked(it.activityInfo.packageName) }
             .map {
                 AppEntry(
                     label = it.loadLabel(pm).toString(),
@@ -34,7 +46,7 @@ object Apps {
         return context.packageManager.queryIntentActivities(launchable, 0).map { it.activityInfo.packageName }.toSet()
     }
 
-    fun launch(context: Context, app: AppEntry): Boolean = try {
+    fun launch(context: Context, app: AppEntry): Boolean = if (isAlwaysBlocked(app.packageName)) false else try {
         context.startActivity(
             Intent(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_LAUNCHER)

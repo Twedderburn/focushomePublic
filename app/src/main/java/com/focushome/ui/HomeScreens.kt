@@ -102,9 +102,9 @@ fun FocusScreen(
     }
 }
 
-/** Shown for a moment when the app-blocking service sends a non-essential app away. */
+/** Shown for a moment when the app-blocking service sends a non-essential (or always-blocked) app away. */
 @Composable
-fun NotNowScreen(label: String, onDone: () -> Unit) {
+fun NotNowScreen(label: String, always: Boolean, onDone: () -> Unit) {
     LaunchedEffect(label) {
         delay(2_500)
         onDone()
@@ -120,9 +120,13 @@ fun NotNowScreen(label: String, onDone: () -> Unit) {
         Column(Modifier.padding(horizontal = 36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Not now", color = Ink, fontSize = 52.sp, fontWeight = FontWeight.Thin)
             Spacer(Modifier.height(14.dp))
-            Body("$label is blocked in Focus mode.", color = Dim)
-            Spacer(Modifier.height(6.dp))
-            Body("Scan your key to unlock.", color = Faint)
+            if (always) {
+                Body("$label is always blocked.", color = Dim)
+            } else {
+                Body("$label is blocked in Focus mode.", color = Dim)
+                Spacer(Modifier.height(6.dp))
+                Body("Scan your key to unlock.", color = Faint)
+            }
         }
     }
 }

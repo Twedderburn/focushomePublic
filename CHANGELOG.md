@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3 (2026-11-07)
+
+### Added
+- **Reddit and X are always blocked.** With app blocking on, they're sent home the moment they open, in Focus mode *and* while unlocked, even if they're on your essentials list. The "Not now" screen says the app is always blocked.
+- Reddit and X (including X Lite) no longer appear in the unlocked app list or the essentials picker.
+- The list is fixed in the app (`Apps.ALWAYS_BLOCKED`), so there's no setting to turn it off.
+
 ## 1.2 (2026-10-23)
 
 ### Changed

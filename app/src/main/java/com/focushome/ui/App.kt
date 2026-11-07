@@ -41,6 +41,7 @@ fun FocusHomeApp(
     homePresses: Int,
     resumes: Int,
     blocked: String?,
+    blockedAlways: Boolean,
     onBlockedDone: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -61,12 +62,16 @@ fun FocusHomeApp(
         }
     }
 
+    if (blocked != null && blockedAlways) {
+        NotNowScreen(blocked, always = true, onDone = onBlockedDone)
+        return
+    }
     if (!state.setupDone) {
         SetupFlow(apps, resumes)
         return
     }
     if (blocked != null && state.focusOn) {
-        NotNowScreen(blocked, onDone = onBlockedDone)
+        NotNowScreen(blocked, always = false, onDone = onBlockedDone)
         return
     }
 

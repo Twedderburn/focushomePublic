@@ -23,11 +23,13 @@ class MainActivity : ComponentActivity() {
     private var homePresses by mutableIntStateOf(0)
     private var resumes by mutableIntStateOf(0)
     private var blocked by mutableStateOf<String?>(null)
+    private var blockedAlways by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(SystemBarStyle.dark(Color.BLACK), SystemBarStyle.dark(Color.BLACK))
         blocked = intent?.getStringExtra(EXTRA_BLOCKED)
+        blockedAlways = intent?.getBooleanExtra(EXTRA_BLOCKED_ALWAYS, false) == true
         setContent {
             FocusTheme {
                 FocusHomeApp(
@@ -35,6 +37,7 @@ class MainActivity : ComponentActivity() {
                     homePresses = homePresses,
                     resumes = resumes,
                     blocked = blocked,
+                    blockedAlways = blockedAlways,
                     onBlockedDone = { blocked = null },
                 )
             }
@@ -55,11 +58,17 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         // Home pressed while already home: drop back to the main screen.
         if (intent.hasCategory(Intent.CATEGORY_HOME)) homePresses++
-        intent.getStringExtra(EXTRA_BLOCKED)?.let { blocked = it }
+        intent.getStringExtra(EXTRA_BLOCKED)?.let {
+            blocked = it
+            blockedAlways = intent.getBooleanExtra(EXTRA_BLOCKED_ALWAYS, false)
+        }
     }
 
     companion object {
         /** Label of an app FocusGuardService just sent away; shows the "Not now" screen. */
         const val EXTRA_BLOCKED = "com.focushome.BLOCKED"
+
+        /** True when the blocked app is one of [Apps.ALWAYS_BLOCKED], blocked even while unlocked. */
+        const val EXTRA_BLOCKED_ALWAYS = "com.focushome.BLOCKED_ALWAYS"
     }
 }
