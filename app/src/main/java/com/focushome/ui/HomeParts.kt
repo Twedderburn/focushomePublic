@@ -2,6 +2,8 @@ package com.focushome.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -57,10 +59,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -117,36 +115,37 @@ fun AppIcon(app: AppEntry, size: Dp, modifier: Modifier = Modifier) {
 }
 
 /**
- * Calls [onSwipeUp] when the user keeps dragging upward after the content below has scrolled as far
- * as it can (or straight away when it fits on screen), like opening a launcher's app drawer.
- * Put it before `verticalScroll` in the modifier chain.
+ * Calls [onSwipeLeft] when the user swipes right-to-left anywhere inside, like paging over to an app
+ * drawer. Only a mostly-horizontal drag counts, so scrolling the home screen up and down never
+ * triggers it, and holding an icon to move it still wins once the hold is recognised.
  */
-fun Modifier.onSwipeUp(onSwipeUp: () -> Unit): Modifier = composed {
-    val threshold = with(LocalDensity.current) { 72.dp.toPx() }
-    val latest by rememberUpdatedState(onSwipeUp)
-    val connection = remember(threshold) {
-        object : NestedScrollConnection {
-            var pulled = 0f
-            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < 0f) {
-                    pulled -= available.y
-                    if (pulled > threshold) {
-                        pulled = 0f
-                        latest()
-                    }
-                } else if (available.y > 0f) {
-                    pulled = 0f
-                }
-                return Offset.Zero
-            }
+fun Modifier.onSwipeLeft(onSwipeLeft: () -> Unit): Modifier = onHorizontalSwipe(toLeft = true, onSwipeLeft)
 
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                pulled = 0f
-                return Velocity.Zero
+/** Calls [onSwipeRight] on a left-to-right swipe; the drawer uses it to close. */
+fun Modifier.onSwipeRight(onSwipeRight: () -> Unit): Modifier = onHorizontalSwipe(toLeft = false, onSwipeRight)
+
+private fun Modifier.onHorizontalSwipe(toLeft: Boolean, onSwipe: () -> Unit): Modifier = composed {
+    val threshold = with(LocalDensity.current) { 64.dp.toPx() }
+    val latest by rememberUpdatedState(onSwipe)
+    pointerInput(threshold, toLeft) {
+        var travelled = 0f
+        var fired = false
+        detectHorizontalDragGestures(
+            onDragStart = {
+                travelled = 0f
+                fired = false
+            },
+            onDragCancel = { travelled = 0f },
+        ) { change, dx ->
+            change.consume()
+            travelled += dx
+            // Fire as soon as the swipe is long enough, so it feels immediate rather than on release.
+            if (!fired && (if (toLeft) travelled < -threshold else travelled > threshold)) {
+                fired = true
+                latest()
             }
         }
     }
-    nestedScroll(connection)
 }
 
 /**
@@ -264,22 +263,6 @@ fun FavoritesGrid(apps: List<AppEntry>, onOpen: (AppEntry) -> Unit, modifier: Mo
     }
 }
 
-/** The pill at the bottom of the home screen that opens the app drawer (or explains why it can't). */
-@Composable
-fun DrawerHandle(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier
-            .clip(RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(Modifier.width(36.dp).height(4.dp).clip(CircleShape).background(Faint))
-        Spacer(Modifier.height(6.dp))
-        Text(label, color = Dim, fontSize = 13.sp)
-    }
-}
-
 /** Every installed app, searchable, over the home screen. Only shown while unlocked. */
 @Composable
 fun AllAppsDrawer(apps: List<AppEntry>, favorites: Set<String>, onOpen: (AppEntry) -> Unit, onClose: () -> Unit) {
@@ -297,6 +280,7 @@ fun AllAppsDrawer(apps: List<AppEntry>, favorites: Set<String>, onOpen: (AppEntr
     Column(
         Modifier
             .fillMaxSize()
+            .onSwipeRight(onClose)
             .background(Bg)
             .safeDrawingPadding()
             .padding(horizontal = 20.dp),

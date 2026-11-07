@@ -71,6 +71,8 @@ data class TourStep(
     val target: String? = null,
     val waitFor: String? = null,
     val hint: String? = null,
+    /** On a "try it" step, let touches through everywhere, not just the spotlight (for gestures like swipe right). */
+    val anywhere: Boolean = false,
 )
 
 object TourEvents {
@@ -174,14 +176,14 @@ fun buildTourSteps(state: FocusState): List<TourStep> = buildList {
 
     if (!state.focusOn) {
         add(TourStep("drawer", "Every app, one swipe away",
-            "While unlocked, all your apps live in a drawer.",
-            target = "drawer", waitFor = TourEvents.DRAWER_OPENED, hint = "Try it: tap All apps. Later you can also swipe up anywhere."))
+            "While unlocked, all your apps live in a drawer that slides in from the right.",
+            waitFor = TourEvents.DRAWER_OPENED, hint = "Try it: swipe left anywhere on the screen."))
         add(TourStep("search", "Find any app",
             "Type a few letters to filter the list. Go on the keyboard opens the first match. Starred apps are your favorites.",
             target = "search"))
         add(TourStep("close", "Back to home",
             "The drawer closes when you're done, or when you press Home.",
-            target = "close", waitFor = TourEvents.DRAWER_CLOSED, hint = "Try it: tap Close or press Back."))
+            target = "close", waitFor = TourEvents.DRAWER_CLOSED, anywhere = true, hint = "Try it: tap Close, press Back or swipe right."))
         add(TourStep("lock", "Lock",
             "Tap the padlock to turn on Focus mode. Only your favorites will open until you scan your key. $relock",
             target = "lock"))
@@ -197,8 +199,8 @@ fun buildTourSteps(state: FocusState): List<TourStep> = buildList {
                 "Leaving the screen starts the wait over."))
     } else {
         add(TourStep("drawer", "All apps are locked",
-            "In Focus mode the app drawer stays closed. Swiping up just reminds you to scan your key.",
-            target = "drawer"))
+            "Once you're unlocked, swiping left anywhere on the home screen opens a drawer with every app. " +
+                "In Focus mode it stays closed, and a swipe just reminds you to scan your key."))
         add(TourStep("scan", "Scan to unlock",
             "Scan the QR key you printed to unlock every app. Keep it somewhere inconvenient. That's the point.",
             target = "scan"))
@@ -255,14 +257,17 @@ fun TourOverlay(tour: TourController) {
             }
         }
 
-        // Block touches, except inside the spotlight on a "try it" step.
-        if (hole != null && step.waitFor != null) {
-            Blocker(0f, 0f, width, hole.top)
-            Blocker(0f, hole.bottom, width, height)
-            Blocker(0f, hole.top, hole.left, hole.bottom)
-            Blocker(hole.right, hole.top, width, hole.bottom)
-        } else {
-            Blocker(0f, 0f, width, height)
+        // Block touches, except inside the spotlight on a "try it" step. A "try it" step with no
+        // target is a whole-screen gesture (swipe left for all apps), so it lets everything through.
+        when {
+            step.waitFor != null && (step.target == null || step.anywhere) -> Unit
+            hole != null && step.waitFor != null -> {
+                Blocker(0f, 0f, width, hole.top)
+                Blocker(0f, hole.bottom, width, height)
+                Blocker(0f, hole.top, hole.left, hole.bottom)
+                Blocker(hole.right, hole.top, width, hole.bottom)
+            }
+            else -> Blocker(0f, 0f, width, height)
         }
 
         // The card goes in the larger space above or below the spotlight, or in the middle.

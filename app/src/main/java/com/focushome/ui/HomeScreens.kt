@@ -4,8 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -48,7 +48,7 @@ import kotlinx.coroutines.delay
 
 /**
  * The layout both home screens share: clock and status on top, the Claude card, the favorites grid,
- * then a footer. Swiping up calls [onSwipeUp].
+ * then a footer. Swiping left anywhere calls [onSwipeLeft].
  */
 @Composable
 private fun HomeBody(
@@ -58,7 +58,7 @@ private fun HomeBody(
     status: String,
     message: String?,
     resumes: Int,
-    onSwipeUp: () -> Unit,
+    onSwipeLeft: () -> Unit,
     footer: @Composable ColumnScope.() -> Unit,
 ) {
     val context = LocalContext.current
@@ -91,12 +91,12 @@ private fun HomeBody(
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    // Swipe left anywhere for all apps; not while a folder is open on top.
+    Box(Modifier.fillMaxSize().onSwipeLeft { if (openFolder == null) onSwipeLeft() }) {
     Page {
         Column(
             Modifier
                 .weight(1f)
-                .onSwipeUp(onSwipeUp)
                 .verticalScroll(rememberScrollState()),
         ) {
             Spacer(Modifier.height(34.dp))
@@ -220,7 +220,7 @@ fun FocusScreen(
         status = "Focused ${formatDuration(state.focusMsToday(now))} today  ·  ${unlocksText(state.unlocksToday)}",
         message = hint ?: message,
         resumes = resumes,
-        onSwipeUp = explainLocked,
+        onSwipeLeft = explainLocked,
     ) {
         Row(
             Modifier
@@ -230,7 +230,6 @@ fun FocusScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Quiet("Scan to unlock", Modifier.tourTarget("scan"), color = Ink, onClick = onScan)
-            DrawerHandle("Locked", onClick = explainLocked, modifier = Modifier.tourTarget("drawer"))
             Quiet("Lost your key?", Modifier.tourTarget("emergency"), color = Faint, onClick = onEmergency)
         }
     }
@@ -271,7 +270,7 @@ fun NotNowScreen(label: String, reason: BlockReason, onDone: () -> Unit) {
     }
 }
 
-/** Unlocked: the same home screen, plus a swipe-up drawer with every app. */
+/** Unlocked: the same home screen, plus a swipe-left drawer with every app. */
 @Composable
 fun OpenScreen(
     state: FocusState,
@@ -302,7 +301,7 @@ fun OpenScreen(
             status = state.relockAtWall()?.let { "Unlocked until ${formatTime(context, it)}" } ?: "Unlocked",
             message = message,
             resumes = resumes,
-            onSwipeUp = { drawerOpen = true },
+            onSwipeLeft = { drawerOpen = true },
         ) {
             Row(
                 Modifier
@@ -312,15 +311,14 @@ fun OpenScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 LockButton(onClick = onLock, modifier = Modifier.tourTarget("lock"))
-                DrawerHandle("All apps", onClick = { drawerOpen = true }, modifier = Modifier.tourTarget("drawer"))
                 SettingsButton(onClick = onSettings, modifier = Modifier.tourTarget("settings"))
             }
         }
 
         AnimatedVisibility(
             visible = drawerOpen,
-            enter = slideInVertically { it / 3 } + fadeIn(),
-            exit = slideOutVertically { it / 3 } + fadeOut(),
+            enter = slideInHorizontally { it } + fadeIn(),
+            exit = slideOutHorizontally { it } + fadeOut(),
         ) {
             AllAppsDrawer(
                 apps = apps,

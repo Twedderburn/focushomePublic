@@ -9,7 +9,7 @@
   - Tap a folder to open it: just its name and its apps. Tap the name to rename it, hold an app to reorder it, or drag an app out past the edge to take it out. A folder with one app left turns back into that app. The tour explains all of this.
   - The layout is saved. New favorites go at the end, and apps you remove from your favorites leave their folders. Arranging doesn't change which apps are allowed in Focus mode.
 - **A first-run tour.** Right after setup, a step-by-step walkthrough spotlights each part of the real home screen and explains it. It covers the clock and status, favorites, the app drawer, Lock, Settings, Focus mode and the QR key, the emergency unlock, "Not now" blocking, the web filter and the Claude box.
-  - It's interactive: on some steps you try the control yourself (open the drawer, then close it) and the tour moves on when you do.
+  - It's interactive: on some steps you try the control yourself (swipe left to open the drawer, then close it) and the tour moves on when you do.
   - It's written for whichever mode you're in. In Focus mode it points at Scan to unlock and Lost your key? instead.
   - Skip it at any time, and replay it from Settings › Tour. People updating from an earlier version aren't shown it automatically.
 
@@ -21,7 +21,7 @@
   - Favorites (the essentials list, renamed) show as a four-across grid of full-colour, rounded-square icons with labels. The All apps drawer uses the same icons.
   - Lock and Settings are now round icon buttons: a padlock in the accent colour and a neutral gear.
   - The Claude card is off by default; turn it on in Settings › Claude on the home screen. It lets you type a message and hand it straight to the Claude app with the send button or the keyboard's Send key. If Claude can't take shared text, the message is copied and Claude opens so you can paste it. In Focus mode the card only works if Claude is one of your favorites.
-- **All apps live in a swipe-up drawer** that also opens from the **All apps** handle at the bottom. It's searchable and stars your favorites. It only opens while unlocked; in Focus mode the handle reads "Locked" and a swipe just reminds you to scan your key.
+- **All apps live in a drawer:** swipe left anywhere on the home screen. It slides in from the right; swipe right, tap Close or press Back to close it. It's searchable and stars your favorites. It only opens while unlocked; in Focus mode a swipe just reminds you to scan your key. There's no button for it, so the bottom of the screen stays clear. A sideways swipe never gets in the way of scrolling the home screen.
 
 ### Removed
 - The "What this can't stop" section in Settings. The app no longer spells out ways around itself.
