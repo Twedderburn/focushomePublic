@@ -23,13 +23,13 @@ class MainActivity : ComponentActivity() {
     private var homePresses by mutableIntStateOf(0)
     private var resumes by mutableIntStateOf(0)
     private var blocked by mutableStateOf<String?>(null)
-    private var blockedAlways by mutableStateOf(false)
+    private var blockReason by mutableStateOf(BlockReason.Focus)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(SystemBarStyle.dark(Color.BLACK), SystemBarStyle.dark(Color.BLACK))
         blocked = intent?.getStringExtra(EXTRA_BLOCKED)
-        blockedAlways = intent?.getBooleanExtra(EXTRA_BLOCKED_ALWAYS, false) == true
+        blockReason = reasonOf(intent)
         setContent {
             FocusTheme {
                 FocusHomeApp(
@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
                     homePresses = homePresses,
                     resumes = resumes,
                     blocked = blocked,
-                    blockedAlways = blockedAlways,
+                    blockReason = blockReason,
                     onBlockedDone = { blocked = null },
                 )
             }
@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
         FocusStore.tick()
         Notifications.clearRelocked(this)
         resumes++
+        DnsFilter.start(this)
         lifecycleScope.launch {
             apps = withContext(Dispatchers.Default) { Apps.load(this@MainActivity) }
         }
@@ -60,15 +61,18 @@ class MainActivity : ComponentActivity() {
         if (intent.hasCategory(Intent.CATEGORY_HOME)) homePresses++
         intent.getStringExtra(EXTRA_BLOCKED)?.let {
             blocked = it
-            blockedAlways = intent.getBooleanExtra(EXTRA_BLOCKED_ALWAYS, false)
+            blockReason = reasonOf(intent)
         }
     }
+
+    private fun reasonOf(intent: Intent?): BlockReason =
+        intent?.getStringExtra(EXTRA_BLOCK_REASON)?.let { runCatching { BlockReason.valueOf(it) }.getOrNull() } ?: BlockReason.Focus
 
     companion object {
         /** Label of an app FocusGuardService just sent away; shows the "Not now" screen. */
         const val EXTRA_BLOCKED = "com.focushome.BLOCKED"
 
-        /** True when the blocked app is one of [Apps.ALWAYS_BLOCKED], blocked even while unlocked. */
-        const val EXTRA_BLOCKED_ALWAYS = "com.focushome.BLOCKED_ALWAYS"
+        /** A [BlockReason] name: Focus mode, always blocked, or a browser while the web filter is off. */
+        const val EXTRA_BLOCK_REASON = "com.focushome.BLOCK_REASON"
     }
 }

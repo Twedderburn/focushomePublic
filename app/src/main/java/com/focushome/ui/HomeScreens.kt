@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.focushome.AppEntry
 import com.focushome.Apps
+import com.focushome.BlockReason
 import com.focushome.FocusState
 import kotlinx.coroutines.delay
 
@@ -104,7 +105,7 @@ fun FocusScreen(
 
 /** Shown for a moment when the app-blocking service sends a non-essential (or always-blocked) app away. */
 @Composable
-fun NotNowScreen(label: String, always: Boolean, onDone: () -> Unit) {
+fun NotNowScreen(label: String, reason: BlockReason, onDone: () -> Unit) {
     LaunchedEffect(label) {
         delay(2_500)
         onDone()
@@ -120,12 +121,18 @@ fun NotNowScreen(label: String, always: Boolean, onDone: () -> Unit) {
         Column(Modifier.padding(horizontal = 36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Not now", color = Ink, fontSize = 52.sp, fontWeight = FontWeight.Thin)
             Spacer(Modifier.height(14.dp))
-            if (always) {
-                Body("$label is always blocked.", color = Dim)
-            } else {
-                Body("$label is blocked in Focus mode.", color = Dim)
-                Spacer(Modifier.height(6.dp))
-                Body("Scan your key to unlock.", color = Faint)
+            when (reason) {
+                BlockReason.Always -> Body("$label is always blocked.", color = Dim)
+                BlockReason.WebFilter -> {
+                    Body("$label is blocked while the web filter is off.", color = Dim)
+                    Spacer(Modifier.height(6.dp))
+                    Body("Turn the web filter back on to use it.", color = Faint)
+                }
+                BlockReason.Focus -> {
+                    Body("$label is blocked in Focus mode.", color = Dim)
+                    Spacer(Modifier.height(6.dp))
+                    Body("Scan your key to unlock.", color = Faint)
+                }
             }
         }
     }

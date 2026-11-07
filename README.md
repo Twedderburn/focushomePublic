@@ -24,6 +24,20 @@ A minimal Android home-screen launcher that cuts screen time. Built for a Galaxy
   - In-app browser tabs (Custom Tabs) opened from an essential app are allowed.
   - Overlays and bubbles from background apps are ignored, because only real activities count.
   - **Always blocked:** Reddit (`com.reddit.frontpage`) and X (`com.twitter.android`, `com.twitter.android.lite`) are sent home in every mode, unlocked included, and whatever the essentials list says. They're also hidden from every app list in Focus Home. The list is `Apps.ALWAYS_BLOCKED` and has no setting. The websites in a browser aren't affected.
+- **Web filter** (`DnsFilter.kt`, `DnsFilterService.kt`): blocks Reddit and X in every browser and app.
+  - It's a local VPN that routes one made-up address (`10.111.222.2`) and makes it the phone's DNS server, so only DNS lookups go through it.
+  - Lookups for `DnsFilter.BLOCKED_DOMAINS` and their subdomains get NXDOMAIN ("no such domain"). That covers reddit.com, redd.it, redditmedia.com, redditstatic.com, x.com, twitter.com, twimg.com, t.co and others, plus the common DNS-over-HTTPS providers (so a browser's "secure DNS" fails rather than going around the filter) and Firefox's `use-application-dns.net` canary.
+  - All other lookups are forwarded to the real network's DNS servers, falling back to 1.1.1.1 and 8.8.8.8. The rest of the phone's traffic never touches the VPN.
+  - **No off switch.**
+    - It starts with the app, on boot (`BootReceiver`) and after updates.
+    - `FocusGuardService` restarts it within 5 seconds if it stops.
+    - If Android needs the VPN OK'd again (it was disconnected in Settings, or another VPN took over), the home screen shows only a "Turn on web filter" screen. Until the filter is back, every browser is blocked in both modes.
+    - The same happens if Private DNS is set to a named provider ("strict" mode), which sends lookups around the filter.
+  - **Always-on VPN** (Settings › Connections › More connection settings › VPN › ⚙ Focus Home) makes Android restart it too. Leave "Block connections without VPN" off. This VPN carries only DNS, so lockdown can cut off everything else.
+  - **Device owner (optional, hard lock).**
+    - Make Focus Home device owner and it pins the filter as Android's always-on VPN, sets Private DNS to Automatic, and turns on `DISALLOW_CONFIG_VPN` and `DISALLOW_CONFIG_PRIVATE_DNS`. The VPN can't be disconnected, and Focus Home can't be uninstalled or force-stopped.
+    - **Android only allows this on a phone with no accounts signed in.** Remove every account in Settings › Accounts and backup (Samsung, Google, and so on), then run `adb shell dpm set-device-owner com.focushome/.FocusAdminReceiver`, then sign back in.
+    - **The only way to undo it is a factory reset.**
 - **Settings and the essential-apps picker** can only be reached while unlocked. If a relock happens mid-edit, you land back on the Focus screen.
 - **Default essentials** are matched to whatever is installed: Phone, Messages, Camera, Gallery, Clock, Calendar and Claude.
 
@@ -44,6 +58,7 @@ Install with `adb -d install -r app/build/outputs/apk/release/app-release.apk`, 
 - `QrKey.kt` generates tokens, renders the printable key card (ZXing), prints and shares it, wraps the scanner, and hashes codes.
 - `Apps.kt` lists launchable apps, launches them, and picks the default essentials.
 - `RelockReceiver.kt` contains the alarm receiver and the relock notification.
+- `DnsFilter.kt` holds the web filter's blocklist, start and status helpers, the boot receiver and the device-owner lock. `DnsFilterService.kt` is the VPN, with the minimal IPv4/UDP/DNS handling.
 - `FocusGuardService.kt` is the app-blocking accessibility service. It also has helpers for checking whether the service is on and for opening its Settings page.
 - `ui/` holds the Compose screens: Focus/unlocked home, setup, settings, emergency unlock, and the theme.
 
@@ -55,6 +70,10 @@ With app blocking on, the routes through Recents, notifications and links are cl
 - pick another home app;
 - clear Focus Home's data or uninstall it;
 - force-stop it, which also switches the accessibility service off.
+
+Disconnecting the web filter from Android's VPN settings is possible without device owner. It just brings up the "Turn on web filter" screen and blocks all browsers until you turn it back on. To use a browser without the filter, you'd also have to turn off app blocking.
+
+The web filter doesn't stop a browser with its own built-in VPN or proxy (Opera, Edge's Secure Network, Tor), sites reached by IP address, or another VPN app (which replaces the filter, so the browser block takes over).
 
 Safe mode and adb are also outside an app's reach.
 

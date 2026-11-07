@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4 (2026-11-07)
+
+### Added
+- **Web filter.** A built-in DNS filter blocks Reddit and X in every browser and app, not only their own apps.
+  - It runs as a local VPN that only handles DNS. Lookups for reddit.com, redd.it, x.com, twitter.com, twimg.com, t.co and their subdomains get "no such domain". Everything else goes to your network's normal DNS server, and no other traffic goes through it.
+  - It also blocks the common encrypted-DNS providers, so a browser can't use one to get around it.
+- **It's built in, with no off switch.**
+  - The filter starts when the app starts, after a restart and after updates, and the app-blocking service restarts it within seconds if it stops.
+  - If Android stops letting it run (it was disconnected in Settings, or another VPN took over), the home screen shows only a "Turn on web filter" screen until it's back on, and every browser is blocked in both modes.
+  - The same happens if Private DNS is set to a named provider, which would go around the filter.
+- **Optional hard lock: device owner.** If you make Focus Home device owner with adb (see the README), the filter becomes Android's always-on VPN and the VPN and Private DNS settings are locked. This can only be undone with a factory reset.
+
 ## 1.3 (2026-11-07)
 
 ### Added

@@ -33,7 +33,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.focushome.AppEntry
+import com.focushome.DnsFilter
 import com.focushome.FocusGuard
 import com.focushome.FocusState
 import com.focushome.FocusStore
@@ -56,6 +58,8 @@ fun SettingsScreen(
     val isHome = remember(resumes, recheck) { isDefaultHome(context) }
     val canNotify = remember(resumes, recheck) { Notifications.canPost(context) }
     val guardOn = remember(resumes, recheck) { FocusGuard.isEnabled(context) }
+    val filterRunning by DnsFilter.running.collectAsStateWithLifecycle()
+    val deviceOwner = remember(resumes) { DnsFilter.isDeviceOwner(context) }
     val homeSettings = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { recheck++ }
     val roleRequest = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (!isDefaultHome(context)) homeSettings.launch(Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
@@ -117,6 +121,10 @@ fun SettingsScreen(
                 GuardSetup(guardOn)
             }
 
+            Section("Web filter") {
+                WebFilterSection(filterRunning, deviceOwner)
+            }
+
             if (!canNotify && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 Section("Relock alerts") {
                     Body("Let Focus Home tell you when your unlock time runs out.")
@@ -129,6 +137,7 @@ fun SettingsScreen(
                 Body(
                     if (guardOn) {
                         "Android Settings is left alone, so it can still switch off app blocking or pick another home app. " +
+                            "Disconnecting the web filter there only blocks your browsers until you turn it back on. " +
                             "Focus Home adds friction; it isn't a lock."
                     } else {
                         "Without app blocking, apps already open in Recents and links in notifications get around Focus mode, " +

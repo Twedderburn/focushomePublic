@@ -16,7 +16,8 @@ import android.view.inputmethod.InputMethodManager
 /**
  * Enforces Focus mode beyond the home screen: when an app that isn't essential comes to the front
  * (from Recents, a notification, a link or a widget), it's sent away and the "Not now" screen shows.
- * Apps in [Apps.ALWAYS_BLOCKED] are sent away in every mode.
+ * Apps in [Apps.ALWAYS_BLOCKED] are sent away in every mode. It also keeps the web filter ([DnsFilter]) running,
+ * and while the filter is off, every browser is blocked, in every mode.
  * Only the package and activity name of each new window are read, never its contents.
  */
 class FocusGuardService : AccessibilityService() {
@@ -26,8 +27,13 @@ class FocusGuardService : AccessibilityService() {
     private var refreshedAt = 0L
     private var lastBlocked = ""
     private var lastBlockedAt = 0L
+    private var browsers: Set<String> = emptySet()
+    private var filterCheckedAt = 0L
 
-    override fun onServiceConnected() = refresh()
+    override fun onServiceConnected() {
+        refresh()
+        DnsFilter.start(this)
+    }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
@@ -35,15 +41,24 @@ class FocusGuardService : AccessibilityService() {
         val cls = event.className?.toString() ?: return
         // Reddit and X are blocked in every mode, even unlocked and even if marked essential.
         if (Apps.isAlwaysBlocked(pkg)) {
-            if (isActivity(pkg, cls)) maybeBlock(pkg, always = true)
+            if (isActivity(pkg, cls)) maybeBlock(pkg, BlockReason.Always)
             return
         }
 
         val state = FocusStore.state.value
-        if (!state.setupDone || !state.focusOn) return
+        if (!state.setupDone) return
+        if (SystemClock.elapsedRealtime() - refreshedAt > 60_000) refresh()
+        keepFilterRunning()
+
+        // Without the web filter, a browser could reach the blocked sites, so browsers wait until it's back.
+        if (pkg in browsers && !DnsFilter.isProtecting(this)) {
+            if (isActivity(pkg, cls)) maybeBlock(pkg, BlockReason.WebFilter)
+            return
+        }
+
+        if (!state.focusOn) return
         if (pkg == packageName || pkg in state.essentials) return
 
-        if (SystemClock.elapsedRealtime() - refreshedAt > 60_000) refresh()
         // Apps without a launcher icon are system helpers (in-call screen, pickers, share sheet); never block those.
         if (pkg !in launchable || pkg in alwaysAllowed) return
         // A link opened inside an essential app shows as a browser tab activity; let it through.
@@ -51,20 +66,28 @@ class FocusGuardService : AccessibilityService() {
         // Overlays, dialogs and bubbles from background apps also fire this event; only real activities count.
         if (!isActivity(pkg, cls)) return
 
-        maybeBlock(pkg, always = false)
+        maybeBlock(pkg, BlockReason.Focus)
     }
 
-    private fun maybeBlock(pkg: String, always: Boolean) {
+    /** If the filter has stopped and Android still allows it, start it again (checked at most every 5 seconds). */
+    private fun keepFilterRunning() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - filterCheckedAt < 5_000) return
+        filterCheckedAt = now
+        DnsFilter.start(this)
+    }
+
+    private fun maybeBlock(pkg: String, reason: BlockReason) {
         val now = SystemClock.elapsedRealtime()
         if (pkg == lastBlocked && now - lastBlockedAt < 1_500) return
         lastBlocked = pkg
         lastBlockedAt = now
-        block(pkg, always)
+        block(pkg, reason)
     }
 
     override fun onInterrupt() = Unit
 
-    private fun block(pkg: String, always: Boolean) {
+    private fun block(pkg: String, reason: BlockReason) {
         val label = try {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
         } catch (_: PackageManager.NameNotFoundException) {
@@ -75,7 +98,7 @@ class FocusGuardService : AccessibilityService() {
             Intent(this, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .putExtra(MainActivity.EXTRA_BLOCKED, label)
-                .putExtra(MainActivity.EXTRA_BLOCKED_ALWAYS, always),
+                .putExtra(MainActivity.EXTRA_BLOCK_REASON, reason.name),
         )
     }
 
@@ -91,6 +114,7 @@ class FocusGuardService : AccessibilityService() {
     private fun refresh() {
         refreshedAt = SystemClock.elapsedRealtime()
         launchable = Apps.launchablePackages(this)
+        browsers = Apps.browserPackages(this)
         val dialer = getSystemService(TelecomManager::class.java)?.defaultDialerPackage
         val keyboards = getSystemService(InputMethodManager::class.java)?.enabledInputMethodList?.map { it.packageName }.orEmpty()
         alwaysAllowed = ALWAYS_ALLOWED + keyboards + listOfNotNull(dialer)
@@ -108,6 +132,9 @@ class FocusGuardService : AccessibilityService() {
         )
     }
 }
+
+/** Why the "Not now" screen is showing. */
+enum class BlockReason { Focus, Always, WebFilter }
 
 object FocusGuard {
     private fun component(context: Context) = ComponentName(context, FocusGuardService::class.java)

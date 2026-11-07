@@ -3,6 +3,8 @@ package com.focushome
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.MediaStore
 import android.provider.Telephony
 import android.telecom.TelecomManager
@@ -44,6 +46,16 @@ object Apps {
         val launchable = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         @Suppress("DEPRECATION")
         return context.packageManager.queryIntentActivities(launchable, 0).map { it.activityInfo.packageName }.toSet()
+    }
+
+    /** Apps that open ordinary web links: the browsers. */
+    fun browserPackages(context: Context): Set<String> {
+        val view = Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com")).addCategory(Intent.CATEGORY_BROWSABLE)
+        @Suppress("DEPRECATION")
+        return context.packageManager.queryIntentActivities(view, PackageManager.MATCH_ALL)
+            .map { it.activityInfo.packageName }
+            .filter { it != context.packageName }
+            .toSet()
     }
 
     fun launch(context: Context, app: AppEntry): Boolean = if (isAlwaysBlocked(app.packageName)) false else try {

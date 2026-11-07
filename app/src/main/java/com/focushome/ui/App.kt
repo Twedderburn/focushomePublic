@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -23,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.focushome.AppEntry
+import com.focushome.BlockReason
+import com.focushome.DnsFilter
 import com.focushome.FocusStore
 import com.focushome.QrKey
 import com.focushome.ScanResult
@@ -41,7 +44,7 @@ fun FocusHomeApp(
     homePresses: Int,
     resumes: Int,
     blocked: String?,
-    blockedAlways: Boolean,
+    blockReason: BlockReason,
     onBlockedDone: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -62,8 +65,8 @@ fun FocusHomeApp(
         }
     }
 
-    if (blocked != null && blockedAlways) {
-        NotNowScreen(blocked, always = true, onDone = onBlockedDone)
+    if (blocked != null && blockReason != BlockReason.Focus) {
+        NotNowScreen(blocked, blockReason, onDone = onBlockedDone)
         return
     }
     if (!state.setupDone) {
@@ -71,7 +74,17 @@ fun FocusHomeApp(
         return
     }
     if (blocked != null && state.focusOn) {
-        NotNowScreen(blocked, always = false, onDone = onBlockedDone)
+        NotNowScreen(blocked, BlockReason.Focus, onDone = onBlockedDone)
+        return
+    }
+
+    // The web filter isn't optional: until Android lets it run, it's all the home screen shows.
+    var filterCheck by remember { mutableIntStateOf(0) }
+    val filterRunning by DnsFilter.running.collectAsStateWithLifecycle()
+    val needsConsent = remember(resumes, filterCheck, filterRunning) { !DnsFilter.hasConsent(context) }
+    val privateDns = remember(resumes, filterCheck, filterRunning) { DnsFilter.privateDnsBypass(context) }
+    if (needsConsent || privateDns) {
+        WebFilterGate(needsConsent, privateDns, onChanged = { filterCheck++ })
         return
     }
 
