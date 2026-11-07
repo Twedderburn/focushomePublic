@@ -24,9 +24,14 @@ A minimal Android home-screen launcher that cuts screen time. Built for a Galaxy
   - In-app browser tabs (Custom Tabs) opened from an essential app are allowed.
   - Overlays and bubbles from background apps are ignored, because only real activities count.
   - **Always blocked:** Reddit (`com.reddit.frontpage`) and X (`com.twitter.android`, `com.twitter.android.lite`) are sent home in every mode, unlocked included, and whatever the essentials list says. They're also hidden from every app list in Focus Home. The list is `Apps.ALWAYS_BLOCKED` and has no setting. The websites in a browser aren't affected.
-- **Web filter** (`DnsFilter.kt`, `DnsFilterService.kt`): blocks Reddit and X in every browser and app.
+- **Web filter** (`DnsFilter.kt`, `DnsFilterService.kt`): blocks Reddit, X and adult sites in every browser and app.
   - It's a local VPN that routes one made-up address (`10.111.222.2`) and makes it the phone's DNS server, so only DNS lookups go through it.
   - Lookups for `DnsFilter.BLOCKED_DOMAINS` and their subdomains get NXDOMAIN ("no such domain"). That covers reddit.com, redd.it, redditmedia.com, redditstatic.com, x.com, twitter.com, twimg.com, t.co and others, plus the common DNS-over-HTTPS providers (so a browser's "secure DNS" fails rather than going around the filter) and Firefox's `use-application-dns.net` canary.
+  - **Adult sites** are blocked the same way, in every mode, with no setting. There are three layers:
+    - About 48,000 domains in `app/src/main/assets/adult-domains.txt`, from the porn-only list in [StevenBlack/hosts](https://github.com/StevenBlack/hosts) (MIT licence). Run `scripts/update-adult-blocklist.sh` to refresh it, then rebuild.
+    - A short built-in list (`DnsFilter.ADULT_DOMAINS`) of the biggest sites, which works even if the bundled file can't be read.
+    - The whole `.xxx`, `.porn`, `.sex` and `.adult` top-level domains.
+  - Image results in search engines aren't filtered, and neither are adult sites too new or too small to be on the list.
   - All other lookups are forwarded to the real network's DNS servers, falling back to 1.1.1.1 and 8.8.8.8. The rest of the phone's traffic never touches the VPN.
   - **No off switch.**
     - It starts with the app, on boot (`BootReceiver`) and after updates.
@@ -58,7 +63,7 @@ Install with `adb -d install -r app/build/outputs/apk/release/app-release.apk`, 
 - `QrKey.kt` generates tokens, renders the printable key card (ZXing), prints and shares it, wraps the scanner, and hashes codes.
 - `Apps.kt` lists launchable apps, launches them, and picks the default essentials.
 - `RelockReceiver.kt` contains the alarm receiver and the relock notification.
-- `DnsFilter.kt` holds the web filter's blocklist, start and status helpers, the boot receiver and the device-owner lock. `DnsFilterService.kt` is the VPN, with the minimal IPv4/UDP/DNS handling.
+- `DnsFilter.kt` holds the web filter's blocklists (the adult list itself is `assets/adult-domains.txt`), start and status helpers, the boot receiver and the device-owner lock. `DnsFilterService.kt` is the VPN, with the minimal IPv4/UDP/DNS handling.
 - `FocusGuardService.kt` is the app-blocking accessibility service. It also has helpers for checking whether the service is on and for opening its Settings page.
 - `ui/` holds the Compose screens: Focus/unlocked home, setup, settings, emergency unlock, and the theme.
 

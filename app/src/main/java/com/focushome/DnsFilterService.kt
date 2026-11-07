@@ -56,6 +56,8 @@ class DnsFilterService : VpnService() {
     }
 
     private fun readLoop(pfd: ParcelFileDescriptor) {
+        // Load the adult list before answering anything; lookups wait in the tunnel meanwhile (well under a second).
+        DnsFilter.loadAdultList(this)
         val input = FileInputStream(pfd.fileDescriptor)
         val buf = ByteArray(32_767)
         while (tun === pfd) {

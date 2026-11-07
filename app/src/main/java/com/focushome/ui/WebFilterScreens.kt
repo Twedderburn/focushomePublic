@@ -33,7 +33,7 @@ fun WebFilterGate(needsConsent: Boolean, privateDns: Boolean, onChanged: () -> U
         Spacer(Modifier.height(12.dp))
         if (needsConsent) {
             Body(
-                "Focus Home's web filter blocks Reddit and X in every browser. Android needs you to OK it " +
+                "Focus Home's web filter blocks Reddit, X and adult sites in every browser. Android needs you to OK it " +
                     "as a VPN. It only handles website name lookups. Your other traffic never goes through it.",
             )
             Spacer(Modifier.height(10.dp))
@@ -72,7 +72,7 @@ private fun privateDnsIntent(context: Context): Intent {
 fun WebFilterSection(running: Boolean, deviceOwner: Boolean) {
     val context = LocalContext.current
     Body(
-        if (running) "✓  On. Reddit and X can't load in any browser or app." else "Starting…",
+        if (running) "✓  On. Reddit, X and adult sites can't load in any browser or app." else "Starting…",
         color = if (running) Ink else Dim,
     )
     Spacer(Modifier.height(8.dp))

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5 (2026-11-07)
+
+### Added
+- **Adult sites are blocked by the web filter**, in every browser and app and in every mode, with no setting.
+  - About 48,000 domains from the porn-only list in StevenBlack/hosts (MIT licence), bundled with the app. `scripts/update-adult-blocklist.sh` refreshes it.
+  - A built-in list of the biggest sites, plus the whole `.xxx`, `.porn`, `.sex` and `.adult` top-level domains.
+- The "Turn on web filter" screen and Settings now say that adult sites are blocked too.
+
 ## 1.4 (2026-11-07)
 
 ### Added

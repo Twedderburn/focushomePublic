@@ -34,10 +34,52 @@ object DnsFilter {
         "use-application-dns.net",
     )
 
+    /**
+     * Adult sites. These are built in so they're blocked even if the bundled list ([ADULT_LIST_ASSET]) can't be read.
+     * "xxx", "porn", "sex" and "adult" are whole top-level domains that exist only for adult sites.
+     */
+    val ADULT_DOMAINS = setOf(
+        "xxx", "porn", "sex", "adult",
+        "pornhub.com", "xvideos.com", "xnxx.com", "xhamster.com", "xhamster.desi", "xhamsterlive.com",
+        "redtube.com", "youporn.com", "tube8.com", "spankbang.com", "eporner.com", "txxx.com", "hqporner.com",
+        "porntrex.com", "motherless.com", "youjizz.com", "tnaflix.com", "drtuber.com", "beeg.com", "porn.com",
+        "pornone.com", "4tube.com", "fuq.com", "thumbzilla.com", "ixxx.com", "porndig.com", "porn300.com",
+        "onlyfans.com", "fansly.com", "manyvids.com", "clips4sale.com", "iwantclips.com", "loyalfans.com",
+        "chaturbate.com", "stripchat.com", "bongacams.com", "livejasmin.com", "cam4.com", "camsoda.com",
+        "myfreecams.com", "flirt4free.com", "imlive.com", "jerkmate.com",
+        "brazzers.com", "bangbros.com", "realitykings.com", "naughtyamerica.com", "mofos.com", "digitalplayground.com",
+        "rule34.xxx", "rule34.paheal.net", "e-hentai.org", "exhentai.org", "nhentai.net", "hanime.tv", "hentaihaven.xxx",
+        "gelbooru.com", "danbooru.donmai.us", "f95zone.to",
+        "literotica.com", "imagefap.com", "erome.com", "thothub.to", "coomer.su", "kemono.su",
+    )
+
+    /** The bundled list of ~48,000 adult domains (from StevenBlack/hosts), one per line. */
+    const val ADULT_LIST_ASSET = "adult-domains.txt"
+
+    @Volatile private var adultList: Set<String> = emptySet()
+
+    /** Reads the bundled adult list once. Called by the filter before it answers its first lookup. */
+    fun loadAdultList(context: Context) {
+        if (adultList.isNotEmpty()) return
+        adultList = try {
+            context.assets.open(ADULT_LIST_ASSET).bufferedReader().useLines { lines ->
+                lines.map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith('#') }.toHashSet()
+            }
+        } catch (_: Exception) {
+            emptySet() // ADULT_DOMAINS still applies.
+        }
+    }
+
+    /** For tests: use this list in place of the bundled one. */
+    internal fun setAdultListForTest(list: Set<String>) {
+        adultList = list
+    }
+
     fun isBlocked(name: String): Boolean {
         var n = name.trimEnd('.').lowercase()
+        val adult = adultList
         while (n.isNotEmpty()) {
-            if (n in BLOCKED_DOMAINS) return true
+            if (n in BLOCKED_DOMAINS || n in ADULT_DOMAINS || n in adult) return true
             n = n.substringAfter('.', "")
         }
         return false
