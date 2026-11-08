@@ -11,7 +11,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +48,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.isOutOfBounds
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
@@ -160,14 +160,35 @@ fun ArrangeableGrid(
                         val key = list.getOrNull(index)?.takeIf { col in 0 until columns && down.position.y >= 0 }
                             ?: return@awaitEachGesture
                         pressed = key
-                        val longPress = awaitLongPressOrCancellation(down.id)
-                        if (longPress == null) {
-                            pressed = null
-                            val up = currentEvent.changes.firstOrNull { it.id == down.id }
-                            if (up != null && up.changedToUp() && !up.isConsumed) {
-                                up.consume()
-                                callbacks.first(key)
+                        // Watch the press in the Main pass ourselves rather than with awaitLongPressOrCancellation,
+                        // which only returns after the Final pass: by then a clickable parent (the folder sheet's
+                        // backdrop and card) has already consumed the up, and taps on apps in a folder were lost.
+                        // Consuming the up here, child first, also keeps those parents from reacting to it.
+                        // null: still held at the timeout, so it's a long press. true: a tap. false: cancelled.
+                        val tapped: Boolean? = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                            var result: Boolean? = null
+                            while (result == null) {
+                                val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                                result = when {
+                                    change == null -> false
+                                    change.changedToUp() -> {
+                                        change.consume()
+                                        true
+                                    }
+                                    // Someone else took it (a scroll, a swipe), or the finger left the grid.
+                                    !change.pressed || change.isConsumed || change.isOutOfBounds(size, extendedTouchPadding) -> false
+                                    // Moved past touch slop: a swipe or scroll that started on an icon, not a tap.
+                                    // This check runs before the parents' swipe handlers see the move (Main pass,
+                                    // child first), so isConsumed alone misses it and the app would open on release.
+                                    (change.position - down.position).getDistance() > viewConfiguration.touchSlop -> false
+                                    else -> null
+                                }
                             }
+                            result
+                        }
+                        if (tapped != null) {
+                            pressed = null
+                            if (tapped) callbacks.first(key)
                             return@awaitEachGesture
                         }
 
@@ -179,13 +200,13 @@ fun ArrangeableGrid(
                         mergeTarget = null
                         pending = null
                         dragKey = key
-                        longPress.consume()
+                        currentEvent.changes.firstOrNull { it.id == down.id }?.consume()
 
                         val half = Offset(cellW / 2, cellH / 2)
                         var outside = false
                         val restRadius = 6.dp.toPx()
                         var anchor = Offset.Zero
-                        drag(longPress.id) { change ->
+                        drag(down.id) { change ->
                             dragDelta += change.positionChange()
                             if ((dragDelta - anchor).getDistance() > restRadius) {
                                 anchor = dragDelta
