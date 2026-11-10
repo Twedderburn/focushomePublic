@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- No admin policies: device owner is only used to pin the web filter as the always-on VPN. -->
+<device-admin>
+    <uses-policies />
+</device-admin>

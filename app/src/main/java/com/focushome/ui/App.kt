@@ -11,10 +11,15 @@ import android.provider.Settings
 import android.text.format.DateFormat
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -23,6 +28,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.focushome.AppEntry
+import com.focushome.BlockReason
+import com.focushome.DnsFilter
 import com.focushome.FocusStore
 import com.focushome.QrKey
 import com.focushome.ScanResult
@@ -41,12 +48,14 @@ fun FocusHomeApp(
     homePresses: Int,
     resumes: Int,
     blocked: String?,
+    blockReason: BlockReason,
     onBlockedDone: () -> Unit,
 ) {
     val context = LocalContext.current
     val state by FocusStore.state.collectAsStateWithLifecycle()
     var screen by rememberSaveable { mutableStateOf(Screen.Home) }
     var message by remember { mutableStateOf<String?>(null) }
+    val tour = remember { TourController().apply { onFinish = { FocusStore.setTourDone(true) } } }
 
     LaunchedEffect(homePresses) { screen = Screen.Home }
     // 1.0 saved key images to Photos, where Gallery's QR detection could open them. Clear them out once
@@ -61,12 +70,26 @@ fun FocusHomeApp(
         }
     }
 
+    if (blocked != null && blockReason != BlockReason.Focus) {
+        NotNowScreen(blocked, blockReason, onDone = onBlockedDone)
+        return
+    }
     if (!state.setupDone) {
         SetupFlow(apps, resumes)
         return
     }
     if (blocked != null && state.focusOn) {
-        NotNowScreen(blocked, onDone = onBlockedDone)
+        NotNowScreen(blocked, BlockReason.Focus, onDone = onBlockedDone)
+        return
+    }
+
+    // The web filter isn't optional: until Android lets it run, it's all the home screen shows.
+    var filterCheck by remember { mutableIntStateOf(0) }
+    val filterRunning by DnsFilter.running.collectAsStateWithLifecycle()
+    val needsConsent = remember(resumes, filterCheck, filterRunning) { !DnsFilter.hasConsent(context) }
+    val privateDns = remember(resumes, filterCheck, filterRunning) { DnsFilter.privateDnsBypass(context) }
+    if (needsConsent || privateDns) {
+        WebFilterGate(needsConsent, privateDns, onChanged = { filterCheck++ })
         return
     }
 
@@ -92,20 +115,29 @@ fun FocusHomeApp(
         }
     }
 
+    // The first-run tour (or a replay from Settings) starts once the home screen is reachable.
+    LaunchedEffect(state.tourDone) {
+        if (!state.tourDone && !tour.active) tour.start(buildTourSteps(FocusStore.state.value))
+    }
+
     when (shown) {
-        Screen.Home ->
-            if (state.focusOn) {
-                FocusScreen(state, apps, now, message, onScan = scanToUnlock, onEmergency = { screen = Screen.Emergency })
-            } else {
-                OpenScreen(
-                    state, apps, now, message, resumes,
-                    onLock = {
-                        FocusStore.enterFocus()
-                        message = "Focus mode on"
-                    },
-                    onSettings = { screen = Screen.Settings },
-                )
+        Screen.Home -> CompositionLocalProvider(LocalTour provides tour) {
+            Box(Modifier.fillMaxSize()) {
+                if (state.focusOn) {
+                    FocusScreen(state, apps, now, message, resumes, onScan = scanToUnlock, onEmergency = { screen = Screen.Emergency })
+                } else {
+                    OpenScreen(
+                        state, apps, now, message, resumes, homePresses,
+                        onLock = {
+                            FocusStore.enterFocus()
+                            message = "Focus mode on"
+                        },
+                        onSettings = { screen = Screen.Settings },
+                    )
+                }
+                if (tour.active) TourOverlay(tour)
             }
+        }
         Screen.Settings -> SettingsScreen(
             state = state,
             apps = apps,
